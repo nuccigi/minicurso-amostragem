@@ -1,6 +1,8 @@
 streamlit
-numpy
 pandas
+numpy
 scipy
 matplotlib
 seaborn
+Pillow
+
