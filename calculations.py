@@ -1,34 +1,36 @@
 import numpy as np
+from scipy.stats import norm
 
-# ---- NOVO: fórmula do seu slide ----
-def sample_size_error(E0, N=None):
+def sample_size_mean(E, sigma, conf=0.95, N=None):
     """
-    E0: erro amostral máximo permitido (em escala decimal, ex: 0.05 para 5%)
-    N:  tamanho da população (se None, assume população infinita)
+    E     : margem de erro (escala decimal, ex: 0.05)
+    sigma : desvio-padrão populacional da variável de interesse
+    conf  : nível de confiança (ex: 0.95, 0.99)
+    N     : tamanho da população (None → população infinita)
+
     Retorna:
       - n (inteiro, arredondado para cima)
-      - n0 (primeira aproximação, sem correção)
+      - n0 (tamanho sem correção finita)
     """
 
-    # primeira aproximação (população infinita)
-    n0 = 1 / (E0 ** 2)
+    z = norm.ppf((1 + conf) / 2)
 
-    if N is None:
-        n = n0
-    else:
-        # correção para população finita
+    # fórmula do slide
+    n0 = (z**2 * sigma**2) / (E**2)
+
+    if N is not None:
         n = (N * n0) / (N + n0)
+    else:
+        n = n0
 
     return int(np.ceil(n)), n0
 
 
-# As funções abaixo podem ficar como já estavam:
-from scipy.stats import norm
-
 def standard_error(sd, n):
     return sd / np.sqrt(n)
 
+
 def confidence_interval(mean, se, conf=0.95):
     z = norm.ppf((1 + conf) / 2)
-    return mean - z*se, mean + z*se
+    return mean - z * se, mean + z * se
 
