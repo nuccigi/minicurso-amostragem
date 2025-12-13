@@ -114,6 +114,11 @@ st.header("2. Cálculo do tamanho amostral")
 st.markdown("**Fórmula utilizada (estimativa da média populacional):**")
 st.latex(r"n = \frac{z_{\alpha/2}^2 \cdot \sigma^2}{E^2}")
 
+st.caption(
+    "Como o tamanho da população é conhecido, "
+    "o cálculo utiliza automaticamente a correção para população finita."
+)
+
 st.markdown("---")
 
 E_pct = st.slider("Margem de erro (E) em %", 1, 20, 5)
@@ -125,17 +130,8 @@ conf = st.selectbox(
     index=1
 )
 
-usar_correcao = st.checkbox("Usar correção para população finita", value=True)
-
-if usar_correcao:
-    N_input = st.number_input(
-        "Tamanho da população (N)",
-        min_value=1,
-        value=int(N),
-        step=1
-    )
-else:
-    N_input = None
+# População SEMPRE finita
+N_input = int(N)
 
 n_recomendado, n0 = sample_size_mean(
     E=E,
@@ -148,12 +144,13 @@ z_valor = norm.ppf((1 + conf) / 2)
 
 st.info(
     f"""
-    **Parâmetros utilizados:**
+    **Parâmetros utilizados no cálculo:**
     - Variável de interesse: {VAR_INTERESSE}
     - Desvio-padrão populacional (σ): {pop_sd:.2f}
     - Nível de confiança: {int(conf*100)}%
     - Valor crítico z: {z_valor:.2f}
     - Margem de erro (E): {E:.3f}
+    - Tamanho da população (N): {N_input}
     """
 )
 
