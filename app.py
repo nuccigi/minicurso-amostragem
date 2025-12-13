@@ -82,6 +82,22 @@ with col1:
     st.markdown("**Estatísticas do exemplo de população (variável de interesse)**")
     st.table(pop_stats_df)
 
+    # ---------------------------
+    # Proporção de sexo na população
+    # ---------------------------
+    pop_gender_prop = (
+        population["sexo"]
+        .value_counts(normalize=True)
+        .rename("Proporção (%)")
+        .reset_index()
+    )
+    pop_gender_prop.columns = ["Sexo", "Proporção (%)"]
+    pop_gender_prop["Proporção (%)"] = (pop_gender_prop["Proporção (%)"] * 100).round(2)
+    pop_gender_prop["Proporção (%)"] = pop_gender_prop["Proporção (%)"].apply(fmt_br)
+
+    st.markdown("**Proporção de sexo no exemplo de população**")
+    st.table(pop_gender_prop)
+
 # ---------------------------
 # Gráfico da população
 # ---------------------------
@@ -132,7 +148,9 @@ n_calc, _ = sample_size_mean(
 
 n_final = min(n_calc, N)
 
-st.success(f"Tamanho recomendado da amostra (n) = **{n_final:,}**".replace(",", "."))
+st.success(
+    f"Tamanho recomendado da amostra (n) = **{n_final:,}**".replace(",", ".")
+)
 
 # ============================================================
 # 3. SELEÇÃO DA AMOSTRA
@@ -171,7 +189,7 @@ with col_a1:
         sample[VAR_INTERESSE],
         f"Distribuição da {VAR_INTERESSE} na amostra (n={n})",
         palette=laplace_colors,
-        xlim=(x_min, x_max)  # 👉 MESMA ESCALA DA POPULAÇÃO
+        xlim=(x_min, x_max)
     )
     st.pyplot(fig_sample)
 
@@ -195,3 +213,27 @@ with col_a2:
     st.markdown("**Estatísticas da amostra (variável de interesse)**")
     st.table(sample_stats_df)
 
+# ============================================================
+# 5. PROPORÇÃO DE SEXO NA AMOSTRA (ESTRATIFICADA)
+# ============================================================
+
+if method == "Estratificada (sexo)":
+    st.markdown("### Proporção de sexo na amostra")
+
+    sample_gender_prop = (
+        sample["sexo"]
+        .value_counts(normalize=True)
+        .rename("Proporção (%)")
+        .reset_index()
+    )
+    sample_gender_prop.columns = ["Sexo", "Proporção (%)"]
+
+    sample_gender_prop["Proporção (%)"] = (
+        sample_gender_prop["Proporção (%)"] * 100
+    ).round(2)
+
+    sample_gender_prop["Proporção (%)"] = (
+        sample_gender_prop["Proporção (%)"].apply(fmt_br)
+    )
+
+    st.table(sample_gender_prop)
