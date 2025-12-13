@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 from PIL import Image
+from scipy.stats import norm
 
 from data import generate_population
 from sampling_functions import (
@@ -9,7 +10,7 @@ from sampling_functions import (
     sample_stratified
 )
 from calculations import (
-    sample_size_error,
+    sample_size_mean,
     standard_error,
     confidence_interval
 )
@@ -37,11 +38,11 @@ st.write("Explore conceitos de tamanho de amostra, métodos de seleção e erros
 laplace_colors = ["#0f2f56", "#22576d", "#296872", "#045243"]
 
 # ============================================================
-# 1. GERAR POPULAÇÃO ARTIFICIAL
+# 1. EXEMPLO DE POPULAÇÃO
 # ============================================================
 
 st.markdown("<br><br>", unsafe_allow_html=True)
-st.header("1. Gerar população artificial")
+st.header("1. Exemplo de população")
 
 N = st.slider("Tamanho da população", 1000, 50000, 10000)
 population = generate_population(N)
@@ -51,17 +52,21 @@ VAR_INTERESSE = "renda"
 col1, col2 = st.columns(2)
 
 # ---------------------------
-# Tabela e estatísticas
+# Tabela e estatísticas da população
 # ---------------------------
 with col1:
-    st.subheader("Primeiras linhas da população")
+    st.subheader("Primeiras linhas do exemplo de população")
     st.dataframe(population.head().reset_index(drop=True))
 
     pop_mean = population[VAR_INTERESSE].mean()
     pop_sd = population[VAR_INTERESSE].std()
 
     pop_stats_df = pd.DataFrame({
-        "Estatística": ["Tamanho (N)", "Média", "Desvio-padrão"],
+        "Estatística": [
+            "Tamanho (N)",
+            f"Média da {VAR_INTERESSE}",
+            f"Desvio-padrão da {VAR_INTERESSE}"
+        ],
         "População": [
             f"{N:,}",
             f"{pop_mean:,.2f}",
@@ -69,11 +74,11 @@ with col1:
         ]
     })
 
-    st.markdown("**Estatísticas da população (variável de interesse)**")
+    st.markdown("**Estatísticas do exemplo de população (variável de interesse)**")
     st.table(pop_stats_df.reset_index(drop=True))
 
     # ---------------------------
-    # Proporção de sexo na POP
+    # Proporção de sexo na população
     # ---------------------------
     pop_gender_prop = (
         population["sexo"]
@@ -84,11 +89,11 @@ with col1:
     pop_gender_prop.columns = ["Sexo", "Proporção"]
     pop_gender_prop["Proporção"] = (pop_gender_prop["Proporção"] * 100).round(2)
 
-    st.markdown("**Proporção de sexo na população**")
+    st.markdown("**Proporção de sexo no exemplo de população**")
     st.table(pop_gender_prop.reset_index(drop=True))
 
 # ---------------------------
-# Gráfico população
+# Gráfico da população
 # ---------------------------
 with col2:
     st.subheader(f"Distribuição da {VAR_INTERESSE} na população")
@@ -106,18 +111,19 @@ with col2:
 st.markdown("<br><br>", unsafe_allow_html=True)
 st.header("2. Cálculo do tamanho amostral")
 
-col_f1, col_f2 = st.columns(2)
-with col_f1:
-    st.markdown("**Populações infinitas (AAS com reposição)**")
-    st.latex(r"n_0 = \frac{1}{E_0^2}")
-with col_f2:
-    st.markdown("**Populações finitas (correção)**")
-    st.latex(r"n = \frac{N \cdot n_0}{N + n_0}")
+st.markdown("**Fórmula utilizada (estimativa da média populacional):**")
+st.latex(r"n = \frac{z_{\alpha/2}^2 \cdot \sigma^2}{E^2}")
 
 st.markdown("---")
 
-E0_pct = st.slider("Erro amostral máximo permitido (E₀) em %", 1, 20, 5)
-E0 = E0_pct / 100
+E_pct = st.slider("Margem de erro (E) em %", 1, 20, 5)
+E = E_pct / 100
+
+conf = st.selectbox(
+    "Nível de confiança",
+    [0.90, 0.95, 0.99],
+    index=1
+)
 
 usar_correcao = st.checkbox("Usar correção para população finita", value=True)
 
@@ -128,12 +134,30 @@ if usar_correcao:
         value=int(N),
         step=1
     )
-    n_recomendado, n0 = sample_size_error(E0, N_input)
 else:
-    n_recomendado, n0 = sample_size_error(E0, None)
+    N_input = None
 
-st.info(f"Primeira aproximação (n₀) = {n0:.1f}")
-st.success(f"Tamanho recomendado (n) = **{n_recomendado}**")
+n_recomendado, n0 = sample_size_mean(
+    E=E,
+    sigma=pop_sd,
+    conf=conf,
+    N=N_input
+)
+
+z_valor = norm.ppf((1 + conf) / 2)
+
+st.info(
+    f"""
+    **Parâmetros utilizados:**
+    - Variável de interesse: {VAR_INTERESSE}
+    - Desvio-padrão populacional (σ): {pop_sd:.2f}
+    - Nível de confiança: {int(conf*100)}%
+    - Valor crítico z: {z_valor:.2f}
+    - Margem de erro (E): {E:.3f}
+    """
+)
+
+st.success(f"Tamanho recomendado da amostra (n) = **{n_recomendado}**")
 
 # ============================================================
 # 3. SELEÇÃO DA AMOSTRA
@@ -162,10 +186,10 @@ elif method == "Estratificada (sexo)":
     sample = sample_stratified(population, "sexo", n)
 
 # ============================================================
-# 3B. ESTATÍSTICAS DA AMOSTRA + GRÁFICO
+# 4. ESTATÍSTICAS DA AMOSTRA + GRÁFICO
 # ============================================================
 
-st.subheader("Distribuição da amostra (mesmo visual da população)")
+st.subheader("Distribuição da amostra")
 
 col_a1, col_a2 = st.columns(2)
 
@@ -182,7 +206,11 @@ with col_a2:
     sample_sd = sample[VAR_INTERESSE].std()
 
     sample_stats_df = pd.DataFrame({
-        "Estatística": ["Tamanho (n)", "Média", "Desvio-padrão"],
+        "Estatística": [
+            "Tamanho (n)",
+            f"Média da {VAR_INTERESSE}",
+            f"Desvio-padrão da {VAR_INTERESSE}"
+        ],
         "Amostra": [
             len(sample),
             f"{sample_mean:,.2f}",
@@ -190,11 +218,11 @@ with col_a2:
         ]
     })
 
-    st.markdown("**Estatísticas da amostra**")
+    st.markdown("**Estatísticas da amostra (variável de interesse)**")
     st.table(sample_stats_df.reset_index(drop=True))
 
 # ============================================================
-# 3C. PROPORÇÃO DE SEXO NA AMOSTRA (APENAS PARA ESTRATIFICADA)
+# 5. PROPORÇÃO DE SEXO NA AMOSTRA (ESTRATIFICADA)
 # ============================================================
 
 if method == "Estratificada (sexo)":
