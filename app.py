@@ -50,6 +50,10 @@ population = generate_population(N)
 
 VAR_INTERESSE = "renda"
 
+# 👉 LIMITES GLOBAIS PARA COMPARAÇÃO DOS GRÁFICOS
+x_min = population[VAR_INTERESSE].min()
+x_max = population[VAR_INTERESSE].max()
+
 col1, col2 = st.columns(2)
 
 # ---------------------------
@@ -78,31 +82,18 @@ with col1:
     st.markdown("**Estatísticas do exemplo de população (variável de interesse)**")
     st.table(pop_stats_df)
 
-    # Proporção de sexo
-    pop_gender_prop = (
-        population["sexo"]
-        .value_counts(normalize=True)
-        .rename("Proporção")
-        .reset_index()
-    )
-    pop_gender_prop.columns = ["Sexo", "Proporção (%)"]
-    pop_gender_prop["Proporção (%)"] = (pop_gender_prop["Proporção (%)"] * 100).round(2)
-    pop_gender_prop["Proporção (%)"] = pop_gender_prop["Proporção (%)"].apply(fmt_br)
-
-    st.markdown("**Proporção de sexo no exemplo de população**")
-    st.table(pop_gender_prop)
-
 # ---------------------------
 # Gráfico da população
 # ---------------------------
 with col2:
     st.subheader(f"Distribuição da {VAR_INTERESSE} na população")
-    fig = plot_distribution(
+    fig_pop = plot_distribution(
         population[VAR_INTERESSE],
         f"Distribuição da {VAR_INTERESSE}",
-        palette=laplace_colors
+        palette=laplace_colors,
+        xlim=(x_min, x_max)
     )
-    st.pyplot(fig)
+    st.pyplot(fig_pop)
 
 # ============================================================
 # 2. CÁLCULO DO TAMANHO AMOSTRAL
@@ -132,7 +123,6 @@ conf = st.selectbox(
 
 z_valor = norm.ppf((1 + conf) / 2)
 
-# População SEMPRE finita
 n_calc, _ = sample_size_mean(
     E=E,
     sigma=pop_sd,
@@ -140,20 +130,7 @@ n_calc, _ = sample_size_mean(
     N=N
 )
 
-# Garante apresentação correta
 n_final = min(n_calc, N)
-
-st.info(
-    f"""
-    **Parâmetros utilizados no cálculo:**
-    - Variável de interesse: {VAR_INTERESSE}
-    - Desvio-padrão populacional (σ): {fmt_br(pop_sd)}
-    - Margem de erro (E): {fmt_br(E, 0)}
-    - Nível de confiança: {int(conf*100)}%
-    - Valor crítico z: {fmt_br(z_valor, 2)}
-    - Tamanho da população (N): {N:,}".replace(",", ".")
-    """
-)
 
 st.success(f"Tamanho recomendado da amostra (n) = **{n_final:,}**".replace(",", "."))
 
@@ -182,7 +159,7 @@ else:
     sample = sample_stratified(population, "sexo", n)
 
 # ============================================================
-# 4. ESTATÍSTICAS DA AMOSTRA
+# 4. GRÁFICO + ESTATÍSTICAS DA AMOSTRA
 # ============================================================
 
 st.subheader("Distribuição da amostra")
@@ -193,7 +170,8 @@ with col_a1:
     fig_sample = plot_distribution(
         sample[VAR_INTERESSE],
         f"Distribuição da {VAR_INTERESSE} na amostra (n={n})",
-        palette=laplace_colors
+        palette=laplace_colors,
+        xlim=(x_min, x_max)  # 👉 MESMA ESCALA DA POPULAÇÃO
     )
     st.pyplot(fig_sample)
 
@@ -216,23 +194,4 @@ with col_a2:
 
     st.markdown("**Estatísticas da amostra (variável de interesse)**")
     st.table(sample_stats_df)
-
-# ============================================================
-# 5. PROPORÇÃO DE SEXO NA AMOSTRA (ESTRATIFICADA)
-# ============================================================
-
-if method == "Estratificada (sexo)":
-    st.markdown("### Proporção de sexo na amostra")
-
-    sample_gender_prop = (
-        sample["sexo"]
-        .value_counts(normalize=True)
-        .rename("Proporção (%)")
-        .reset_index()
-    )
-    sample_gender_prop.columns = ["Sexo", "Proporção (%)"]
-    sample_gender_prop["Proporção (%)"] = (sample_gender_prop["Proporção (%)"] * 100).round(2)
-    sample_gender_prop["Proporção (%)"] = sample_gender_prop["Proporção (%)"].apply(fmt_br)
-
-    st.table(sample_gender_prop)
 
