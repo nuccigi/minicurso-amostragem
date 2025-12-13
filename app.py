@@ -1,7 +1,6 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-from PIL import Image
 from scipy.stats import norm
 
 from data import generate_population
@@ -9,12 +8,15 @@ from sampling_functions import (
     sample_simple_random,
     sample_stratified
 )
-from calculations import (
-    sample_size_mean,
-    standard_error,
-    confidence_interval
-)
+from calculations import sample_size_mean
 from plots import plot_distribution
+
+# ================================
+# FUNÇÃO AUXILIAR – FORMATAÇÃO PT-BR
+# ================================
+
+def fmt_br(x, dec=2):
+    return f"{x:,.{dec}f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 # ================================
 # CONFIGURAÇÃO DO APP
@@ -26,15 +28,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# LOGO NO CANTO SUPERIOR DIREITO
+# LOGO
 col_logo1, col_logo2 = st.columns([6, 1])
 with col_logo2:
     st.image("assets/logo.png", width=120)
 
 st.title("Simulador de Amostragem – Minicurso Laplace")
-st.write("Explore conceitos de tamanho de amostra, métodos de seleção e erros amostrais.")
+st.write("Explore conceitos de tamanho de amostra e métodos de seleção.")
 
-# Paleta Laplace
 laplace_colors = ["#0f2f56", "#22576d", "#296872", "#045243"]
 
 # ============================================================
@@ -44,7 +45,7 @@ laplace_colors = ["#0f2f56", "#22576d", "#296872", "#045243"]
 st.markdown("<br><br>", unsafe_allow_html=True)
 st.header("1. Exemplo de população")
 
-N = st.slider("Tamanho da população", 1000, 50000, 10000)
+N = st.slider("Tamanho da população", 1_000, 50_000, 10_000)
 population = generate_population(N)
 
 VAR_INTERESSE = "renda"
@@ -67,30 +68,29 @@ with col1:
             f"Média da {VAR_INTERESSE}",
             f"Desvio-padrão da {VAR_INTERESSE}"
         ],
-        "População": [
-            f"{N:,}",
-            f"{pop_mean:,.2f}",
-            f"{pop_sd:,.2f}",
+        "Valor": [
+            f"{N:,}".replace(",", "."),
+            fmt_br(pop_mean),
+            fmt_br(pop_sd),
         ]
     })
 
     st.markdown("**Estatísticas do exemplo de população (variável de interesse)**")
-    st.table(pop_stats_df.reset_index(drop=True))
+    st.table(pop_stats_df)
 
-    # ---------------------------
-    # Proporção de sexo na população
-    # ---------------------------
+    # Proporção de sexo
     pop_gender_prop = (
         population["sexo"]
         .value_counts(normalize=True)
         .rename("Proporção")
         .reset_index()
     )
-    pop_gender_prop.columns = ["Sexo", "Proporção"]
-    pop_gender_prop["Proporção"] = (pop_gender_prop["Proporção"] * 100).round(2)
+    pop_gender_prop.columns = ["Sexo", "Proporção (%)"]
+    pop_gender_prop["Proporção (%)"] = (pop_gender_prop["Proporção (%)"] * 100).round(2)
+    pop_gender_prop["Proporção (%)"] = pop_gender_prop["Proporção (%)"].apply(fmt_br)
 
     st.markdown("**Proporção de sexo no exemplo de população**")
-    st.table(pop_gender_prop.reset_index(drop=True))
+    st.table(pop_gender_prop)
 
 # ---------------------------
 # Gráfico da população
@@ -114,15 +114,15 @@ st.header("2. Cálculo do tamanho amostral")
 st.markdown("**Fórmula utilizada (estimativa da média populacional):**")
 st.latex(r"n = \frac{z_{\alpha/2}^2 \cdot \sigma^2}{E^2}")
 
-st.caption(
-    "Como o tamanho da população é conhecido, "
-    "o cálculo utiliza automaticamente a correção para população finita."
-)
-
 st.markdown("---")
 
-E_pct = st.slider("Margem de erro (E) em %", 1, 20, 5)
-E = E_pct / 100
+E = st.slider(
+    "Margem de erro (E) – mesma unidade da renda",
+    min_value=100,
+    max_value=3000,
+    value=500,
+    step=100
+)
 
 conf = st.selectbox(
     "Nível de confiança",
@@ -130,31 +130,32 @@ conf = st.selectbox(
     index=1
 )
 
-# População SEMPRE finita
-N_input = int(N)
+z_valor = norm.ppf((1 + conf) / 2)
 
-n_recomendado, n0 = sample_size_mean(
+# População SEMPRE finita
+n_calc, _ = sample_size_mean(
     E=E,
     sigma=pop_sd,
     conf=conf,
-    N=N_input
+    N=N
 )
 
-z_valor = norm.ppf((1 + conf) / 2)
+# Garante apresentação correta
+n_final = min(n_calc, N)
 
 st.info(
     f"""
     **Parâmetros utilizados no cálculo:**
     - Variável de interesse: {VAR_INTERESSE}
-    - Desvio-padrão populacional (σ): {pop_sd:.2f}
+    - Desvio-padrão populacional (σ): {fmt_br(pop_sd)}
+    - Margem de erro (E): {fmt_br(E, 0)}
     - Nível de confiança: {int(conf*100)}%
-    - Valor crítico z: {z_valor:.2f}
-    - Margem de erro (E): {E:.3f}
-    - Tamanho da população (N): {N_input}
+    - Valor crítico z: {fmt_br(z_valor, 2)}
+    - Tamanho da população (N): {N:,}".replace(",", ".")
     """
 )
 
-st.success(f"Tamanho recomendado da amostra (n) = **{n_recomendado}**")
+st.success(f"Tamanho recomendado da amostra (n) = **{n_final:,}**".replace(",", "."))
 
 # ============================================================
 # 3. SELEÇÃO DA AMOSTRA
@@ -168,22 +169,20 @@ method = st.selectbox(
     ["Aleatória simples", "Estratificada (sexo)"]
 )
 
-n_max = min(5000, N)
 n = st.slider(
     "Tamanho da amostra (n)",
     min_value=10,
-    max_value=int(n_max),
-    value=int(min(n_recomendado, n_max))
+    max_value=N,
+    value=min(n_final, N)
 )
 
 if method == "Aleatória simples":
     sample = sample_simple_random(population, n)
-
-elif method == "Estratificada (sexo)":
+else:
     sample = sample_stratified(population, "sexo", n)
 
 # ============================================================
-# 4. ESTATÍSTICAS DA AMOSTRA + GRÁFICO
+# 4. ESTATÍSTICAS DA AMOSTRA
 # ============================================================
 
 st.subheader("Distribuição da amostra")
@@ -193,7 +192,7 @@ col_a1, col_a2 = st.columns(2)
 with col_a1:
     fig_sample = plot_distribution(
         sample[VAR_INTERESSE],
-        f"Distribuição da {VAR_INTERESSE} na amostra (n={len(sample)})",
+        f"Distribuição da {VAR_INTERESSE} na amostra (n={n})",
         palette=laplace_colors
     )
     st.pyplot(fig_sample)
@@ -208,31 +207,32 @@ with col_a2:
             f"Média da {VAR_INTERESSE}",
             f"Desvio-padrão da {VAR_INTERESSE}"
         ],
-        "Amostra": [
-            len(sample),
-            f"{sample_mean:,.2f}",
-            f"{sample_sd:,.2f}",
+        "Valor": [
+            f"{n:,}".replace(",", "."),
+            fmt_br(sample_mean),
+            fmt_br(sample_sd),
         ]
     })
 
     st.markdown("**Estatísticas da amostra (variável de interesse)**")
-    st.table(sample_stats_df.reset_index(drop=True))
+    st.table(sample_stats_df)
 
 # ============================================================
 # 5. PROPORÇÃO DE SEXO NA AMOSTRA (ESTRATIFICADA)
 # ============================================================
 
 if method == "Estratificada (sexo)":
-    st.markdown("### Proporção de sexo na amostra (estratificada)")
+    st.markdown("### Proporção de sexo na amostra")
 
     sample_gender_prop = (
         sample["sexo"]
         .value_counts(normalize=True)
-        .rename("Proporção")
+        .rename("Proporção (%)")
         .reset_index()
     )
-    sample_gender_prop.columns = ["Sexo", "Proporção"]
-    sample_gender_prop["Proporção"] = (sample_gender_prop["Proporção"] * 100).round(2)
+    sample_gender_prop.columns = ["Sexo", "Proporção (%)"]
+    sample_gender_prop["Proporção (%)"] = (sample_gender_prop["Proporção (%)"] * 100).round(2)
+    sample_gender_prop["Proporção (%)"] = sample_gender_prop["Proporção (%)"].apply(fmt_br)
 
-    st.table(sample_gender_prop.reset_index(drop=True))
+    st.table(sample_gender_prop)
 
