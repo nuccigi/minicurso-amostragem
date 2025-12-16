@@ -11,6 +11,23 @@ from sampling_functions import (
 from calculations import sample_size_mean
 from plots import plot_distribution
 
+st.markdown(
+    """
+    **Desenvolvido por Giovanna Nucci**  
+    Análise de Dados e Estatística – UFU  
+
+    🔗 [LinkedIn](https://www.linkedin.com/in/giovanna-nucci-932831273/?originalSubdomain=br)
+
+    ---
+    Este simulador foi criado com o objetivo de **visualizar, de forma prática**, 
+    o comportamento de uma amostra em relação à população.
+
+    Aqui, a ideia é **ver os dados acontecendo**: 
+    como a amostra se distribui, como a média se aproxima da população e como o erro 
+    diminui à medida que o tamanho da amostra aumenta.
+    """
+)
+
 # ================================
 # FUNÇÃO AUXILIAR – FORMATAÇÃO PT-BR
 # ================================
@@ -237,4 +254,34 @@ if method == "Estratificada (sexo)":
     )
 
     st.table(sample_gender_prop)
+# ============================================================
+# 6. ERRO ABSOLUTO DA MÉDIA (POPULAÇÃO x AMOSTRA)
+# ============================================================
+
+st.markdown("<br><br>", unsafe_allow_html=True)
+st.header("6. Erro absoluto da média")
+
+erro_absoluto = abs(sample_mean - pop_mean)
+
+erro_df = pd.DataFrame({
+    "Descrição": [
+        "Média da população",
+        "Média da amostra",
+        "Erro absoluto | média amostral − média populacional |"
+    ],
+    "Valor": [
+        fmt_br(pop_mean),
+        fmt_br(sample_mean),
+        fmt_br(erro_absoluto)
+    ]
+})
+
+st.table(erro_df)
+
+st.info(
+    "O erro absoluto mede o quão distante a média da amostra ficou da "
+    "média verdadeira da população. Observe que, à medida que o tamanho "
+    "da amostra aumenta, esse erro tende a diminuir."
+)
+
 
