@@ -29,11 +29,11 @@ st.set_page_config(
 )
 
 # LOGO
-col_logo1, col_logo2 = st.columns([6, 1])
-with col_logo2:
-    st.image("assets/logo.png", width=120)
+#col_logo1, col_logo2 = st.columns([6, 1])
+#with col_logo2:
+    #st.image("assets/logo.png", width=120)
 
-st.title("Simulador de Amostragem – Minicurso Laplace")
+st.title("Simulador de Amostragem")
 st.write("Explore conceitos de tamanho de amostra e métodos de seleção.")
 
 laplace_colors = ["#0f2f56", "#22576d", "#296872", "#045243"]
@@ -237,3 +237,4 @@ if method == "Estratificada (sexo)":
     )
 
     st.table(sample_gender_prop)
+
