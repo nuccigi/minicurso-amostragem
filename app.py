@@ -11,23 +11,6 @@ from sampling_functions import (
 from calculations import sample_size_mean
 from plots import plot_distribution
 
-st.markdown(
-    """
-    **Desenvolvido por Giovanna Nucci**  
-    Análise de Dados e Estatística – UFU  
-
-    🔗 [LinkedIn](https://www.linkedin.com/in/giovanna-nucci-932831273/?originalSubdomain=br)
-
-    ---
-    Este simulador foi criado com o objetivo de **visualizar, de forma prática**, 
-    o comportamento de uma amostra em relação à população.
-
-    Aqui, a ideia é **ver os dados acontecendo**: 
-    como a amostra se distribui, como a média se aproxima da população e como o erro 
-    diminui à medida que o tamanho da amostra aumenta.
-    """
-)
-
 # ================================
 # FUNÇÃO AUXILIAR – FORMATAÇÃO PT-BR
 # ================================
@@ -51,7 +34,23 @@ st.set_page_config(
     #st.image("assets/logo.png", width=120)
 
 st.title("Simulador de Amostragem")
-st.write("Explore conceitos de tamanho de amostra e métodos de seleção.")
+st.markdown(
+    """
+    **Desenvolvido por Giovanna Nucci**  
+    Análise de Dados e Estatística – UFU  
+
+    🔗 [LinkedIn](https://www.linkedin.com/in/giovanna-nucci-932831273/?originalSubdomain=br)
+
+    ---
+    Este simulador foi criado com o objetivo de **visualizar, de forma prática**, 
+    o comportamento de uma amostra em relação à população.
+
+    Aqui, a ideia é **ver os dados acontecendo**: 
+    como a amostra se distribui, como a média se aproxima da população e como o erro 
+    diminui à medida que o tamanho da amostra aumenta.
+    """
+)
+
 
 laplace_colors = ["#0f2f56", "#22576d", "#296872", "#045243"]
 
@@ -283,5 +282,6 @@ st.info(
     "média verdadeira da população. Observe que, à medida que o tamanho "
     "da amostra aumenta, esse erro tende a diminuir."
 )
+
 
 
